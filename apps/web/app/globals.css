@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+  background: #080e18;
+  color: #e2e8f0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+input,
+select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #2a384c;
+  border-radius: 8px;
+  background: #0b1422;
+  padding: 10px 12px;
+  color: #f1f5f9;
+  font-size: 14px;
+}
+input:focus,
+select:focus {
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
+}
+label {
+  display: block;
+  font-size: 12px;
+  color: #9eacc0;
+}
+label > input,
+label > select {
+  margin-top: 7px;
+}
+button,
+select {
+  cursor: pointer;
+}
+th {
+  font-weight: 500;
+  color: #91a2ba;
+  text-align: left;
+}
+th,
+td {
+  padding: 14px 18px;
+  border-bottom: 1px solid #1d2a3c;
+  white-space: nowrap;
+}
+.panel {
+  border: 1px solid #213047;
+  background: #101a2a;
+  border-radius: 14px;
+}
+.eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #93a4bd;
+}
+.recharts-cartesian-axis-tick-value {
+  fill: #94a3b8;
+  font-size: 11px;
+}

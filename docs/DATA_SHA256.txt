@@ -1,0 +1,1 @@
+24c7604edfd5afe862ddb9f9535e2fd7351f43711bfc442bca52055e15e37bcd  packages/quantpilot/market_data/aapl.csv
