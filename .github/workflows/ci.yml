@@ -1,0 +1,52 @@
+name: QuantPilot checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: quantpilot
+          POSTGRES_PASSWORD: quantpilot
+          POSTGRES_DB: quantpilot
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U quantpilot -d quantpilot"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.23"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: uv sync --frozen
+      - run: uv run ruff check . && uv run ruff format --check . && uv run pytest -q
+      - run: uv run alembic upgrade head
+      - run: npm ci && npm run lint && npm run typecheck && npm run build
+        working-directory: apps/web
+      - name: Start local research services and verify HTTP/PostgreSQL
+        run: |
+          uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/api.log 2>&1 &
+          (cd apps/web && npm start > /tmp/web.log 2>&1) &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health && curl -fsS http://127.0.0.1:3000/ > /dev/null; then break; fi
+            sleep 1
+          done
+          uv run python infrastructure/scripts/smoke.py
+      - run: npx playwright install --with-deps chromium && npm run test:e2e
+        working-directory: apps/web
+      - name: Service diagnostics
+        if: failure()
+        run: cat /tmp/api.log /tmp/web.log
