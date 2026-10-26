@@ -1,4 +1,4 @@
-# Phase 1 decisions
+# Architecture decisions
 
 ## One local research workflow
 
@@ -8,10 +8,10 @@ is directly testable without service dependencies. FastAPI owns HTTP and persist
 Next.js owns presentation and a same-origin proxy. A single backtest snapshot table stores
 the complete validated configuration, canonical input-data SHA-256, engine/strategy versions,
 assumptions, fills, trades, metrics and curve. A migration manages the schema. Explicit user,
-strategy and ownership models arrive with auth; this is not a multi-user database design.
+ownership models arrive with auth; this is not a multi-user database design.
 
 Redis/workers are deferred: a bounded daily backtest runs in a threadpool, without scheduling.
-SciPy/statsmodels/scikit-learn and AI/billing libraries wait for features that need them.
+SciPy/statsmodels/scikit-learn and billing libraries wait for features that need them.
 No empty execution/brokerage/risk modules imply functionality that does not exist.
 
 ## Accounting and timing
@@ -53,7 +53,38 @@ provider. Persisting licensed provider records is subject to the account's stora
 ## Deployment boundary
 
 Compose exposes ports only on loopback. There is no registration, tenant authorization,
-public ingress, billing, trading or customer credential store. API keys authorize historical
-market-data requests only. Environment settings provide server-side keys; frontend contains
+public ingress, billing, trading or customer credential store. Provider keys authorize historical
+market data or AI drafting only. Environment settings provide server-side keys; frontend contains
 no keys. Never deploy this local milestone to the public Internet. Live trading is reported
 false and there is no order route/adapter; future live functionality needs more than a flag.
+
+## AI drafts and version approval
+
+`quantpilot.ai` defines a provider protocol, OpenAI implementation and restricted Pydantic
+schema. The model uses Responses structured outputs, has no tools, and receives only the
+user's bounded strategy prompt. Server validation accepts a single daily long-only SMA
+crossover. Entry/exit, indicator, direction and timeframe are fixed enumerations; periods
+and symbols are validated. No risk, execution, account, credential or arbitrary-code fields
+exist. Prompt instructions request clarification for missing/unsupported conditions; human
+review is required because schema validation cannot prove semantic fidelity to an idea.
+
+Migration 0002 creates `strategy_drafts`. Generated drafts preserve prompt/explanation/rules;
+edits create a fresh ID with a parent reference. Rules have no update endpoint. Approval
+records a server timestamp for a particular immutable version; it authorizes only historical
+backtesting. New versions start unapproved even when their parent was approved.
+
+The draft-backtest endpoint refuses unapproved versions, obtains symbol/periods from the
+stored specification and accepts only data/dates/capital/cost options. It calls the same
+deterministic engine as manual backtests. Results persist approved draft ID/time and exact
+specification beside the existing algorithm/data versions and input records. A raw manual
+backtest remains available independently; it cannot masquerade as an approved draft run.
+
+Provider refusal, invalid JSON/schema, HTTP errors and missing configuration never create
+approval, run a backtest or substitute a canned AI answer. No external research or market
+text enters the model in this milestone. Output is rendered as escaped text. Credentials
+are server-side, provider errors are sanitized, `store=false` is requested, and provider
+data-handling policies still apply. Prompts/explanations are stored in the local database.
+
+Tests mock the AI boundary, including the actual SDK HTTP request/structured-output parser.
+Browser tests stub generation only, while using the actual API/PostgreSQL approval and
+backtest routes. An authenticated OpenAI call remains a separate credential-dependent check.

@@ -20,6 +20,8 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-quantpilot}:${POSTGRES_PASSWORD:-quantpilot}@db:5432/${POSTGRES_DB:-quantpilot}
       APCA_API_KEY_ID: ${APCA_API_KEY_ID:-}
       APCA_API_SECRET_KEY: ${APCA_API_SECRET_KEY:-}
+      QUANTPILOT_AI_API_KEY: ${QUANTPILOT_AI_API_KEY:-${OPENAI_API_KEY:-}}
+      QUANTPILOT_AI_MODEL: ${QUANTPILOT_AI_MODEL:-gpt-4.1-mini}
     ports: ["127.0.0.1:8000:8000"]
     depends_on:
       db: {condition: service_healthy}

@@ -17,12 +17,20 @@ Scope: daily, one symbol, long-only, no leverage; adjusted price-series research
 units, no separate corporate-action ledger, no intraday liquidity or execution modeling.
 No public deployment, multi-user support, AI, paper trading, or live orders in this milestone.
 
-## Phase 2 — AI strategy builder (next)
+## Phase 2 — AI strategy builder
 
-Provider abstraction, restricted validated JSON DSL, versioned drafts, explicit user approval
-before activation, natural-language SMA builder then additional tested indicators. Keep model
-output advisory. Never expose credentials to the model, execute generated Python, or permit
-AI to alter deterministic risk enforcement. Persist strategy versions independently of runs.
+- [x] OpenAI Responses integration with strict structured outputs and provider abstraction
+- [x] Natural-language daily SMA drafting, explanation and clarification UI
+- [x] Restricted schema, no executable code/tools, no risk or execution fields
+- [x] Immutable draft versions, editing, saved history and explicit per-version approval
+- [x] Backtest exact approved rules with version/specification snapshot in saved results
+- [x] Automated schema/provider/API tests and browser workflow tests using mocked AI
+- [ ] Validate an authenticated OpenAI generation with a configured API key (external prerequisite)
+- [ ] Expand supported indicators only with deterministic engine support and tests
+
+Approval authorizes historical backtesting only. AI has no brokerage/account access and cannot
+approve its output, alter risk settings or submit orders. The server requires a real provider
+key; it never substitutes a fake AI result. This milestone remains local and single-user.
 
 ## Phase 3 — Paper trading
 

@@ -23,9 +23,12 @@ checkout: cloud tasks are already isolated. Do not create worktrees unless reque
 - `apps/api`: FastAPI, configuration, SQLAlchemy persistence; Alembic at root.
 - `apps/web`: Next.js App Router, typed React, Tailwind, shadcn-style Button, Recharts,
   TanStack Query. Browser calls same-origin Next.js API proxy; secrets remain server-side.
-- Phase 1 is **local, single-user research**. No auth or tenant isolation yet. Bind locally;
+- The current app is **local, single-user research**. No auth or tenant isolation yet. Bind locally;
   do not deploy publicly until those controls are implemented. No customer brokerage accounts.
 - No order submission, live trading, arbitrary Python evaluation, or AI execution paths.
+  AI only drafts the restricted schema in `quantpilot.ai`; explicit approval is per immutable
+  version, required server-side for draft backtesting. Edits create new unapproved versions.
+  Do not add a fake AI fallback or send market/account/credential data to the model.
   A future execution layer must enforce a server-side gate; no UI toggle can authorize trades.
 - Use Decimal for portfolio quantities/cash; float only at analytics/JSON boundaries.
 - Completed-bar signals fill at the *next* bar open. Never introduce same-bar closing fills.

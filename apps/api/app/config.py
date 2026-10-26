@@ -1,4 +1,4 @@
-from pydantic import SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://quantpilot:quantpilot@127.0.0.1:5432/quantpilot"
     apca_api_key_id: SecretStr = SecretStr("")
     apca_api_secret_key: SecretStr = SecretStr("")
+    ai_api_key: SecretStr = Field(
+        default=SecretStr(""),
+        validation_alias=AliasChoices("QUANTPILOT_AI_API_KEY", "OPENAI_API_KEY"),
+    )
+    ai_model: str = Field(default="gpt-4.1-mini", validation_alias="QUANTPILOT_AI_MODEL")
 
 
 settings = Settings()

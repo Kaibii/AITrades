@@ -3,21 +3,22 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException
-from quantpilot.backtesting import BacktestConfig, run_backtest
-from quantpilot.market_data import AlpacaProvider, DataError, SampleProvider
+from quantpilot.backtesting import BacktestConfig
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from starlette.concurrency import run_in_threadpool
 
+from app.backtests import execute_backtest
 from app.config import settings
 from app.database import BacktestRun, get_session
 from app.logging import configure_logging
+from app.strategy_routes import router as strategy_router
 
 configure_logging()
 logger = logging.getLogger("quantpilot")
 app = FastAPI(title="QuantPilot Research API", version="0.1.0")
 SessionDep = Annotated[Session, Depends(get_session)]
+app.include_router(strategy_router)
 
 
 @app.exception_handler(SQLAlchemyError)
@@ -42,6 +43,8 @@ def capabilities():
     return {
         "mode": "research-only",
         "live_trading_enabled": False,
+        "ai_configured": bool(settings.ai_api_key.get_secret_value()),
+        "ai_model": settings.ai_model,
         "sample": {"symbol": "AAPL", "start": "2015-02-17", "end": "2017-02-16"},
         "alpaca_configured": bool(
             settings.apca_api_key_id.get_secret_value()
@@ -52,25 +55,7 @@ def capabilities():
 
 @app.post("/api/backtests", status_code=201)
 async def create_backtest(config: BacktestConfig, session: SessionDep):
-    provider = (
-        SampleProvider()
-        if config.provider == "sample"
-        else AlpacaProvider(
-            settings.apca_api_key_id.get_secret_value(),
-            settings.apca_api_secret_key.get_secret_value(),
-        )
-    )
-    try:
-        data = await run_in_threadpool(provider.history, config.symbol, config.start, config.end)
-        result = await run_in_threadpool(run_backtest, config, data)
-    except (DataError, ValueError) as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from None
-    row = BacktestRun(result=result)
-    session.add(row)
-    session.commit()
-    session.refresh(row)
-    logger.info("backtest_completed", extra={"run_id": row.id, "provider": config.provider})
-    return {"id": row.id, "created_at": row.created_at.isoformat(), **result}
+    return await execute_backtest(config, session)
 
 
 @app.get("/api/backtests")

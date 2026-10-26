@@ -1,7 +1,7 @@
 # QuantPilot
 
-An incremental quantitative research platform. Phase 1 provides a working daily SMA crossover
-backtester, a Next.js dashboard, and a FastAPI/PostgreSQL backend. **All performance is
+An incremental quantitative research platform. Includes an AI-assisted daily SMA strategy
+builder, deterministic backtester, Next.js dashboard, and FastAPI/PostgreSQL backend. **All performance is
 hypothetical. No real trades are executed.** This milestone is for local, single-user research.
 
 ## Launch with Docker
@@ -59,6 +59,46 @@ the local API on port 8000); for a custom native destination export it in the we
 Docker sets the internal URL automatically. No credentials are passed to the browser.
 The default database credentials in `.env.example` are local development values only.
 
+## AI strategy creation and approval
+
+1. Set `QUANTPILOT_AI_API_KEY` securely in the server environment or ignored root `.env`.
+   An existing native `OPENAI_API_KEY` is also accepted. The default model is `gpt-4.1-mini`;
+   override `QUANTPILOT_AI_MODEL` with a model supporting Responses structured outputs.
+2. Restart the native API, or recreate the Docker API after changing configuration.
+3. In **AI strategy builder**, describe one symbol and two daily SMA periods, for example:
+   “Buy AAPL when the 20-day SMA crosses above its 50-day SMA; sell on the reverse crossover.”
+4. Generate a draft. Review the entry/exit rules and structured specification. Edit the symbol,
+   periods, name or description if needed; edits save as a new, unapproved version.
+5. Click **Approve for backtesting**, select historical data/dates/capital/costs below, and
+   click **Backtest approved version**. The server loads the exact approved rules; the
+   browser cannot override their symbol or SMA periods in that request.
+6. Reopen drafts and approved versions from **Saved strategy versions**. Approved parents
+   stay unchanged when you save edits. Results retain the approved version and rule snapshot.
+
+Only daily long-only SMA crossovers are supported by this milestone. Unsupported/ambiguous
+requests receive a clarification instead of a runnable draft. RSI, EMA, other indicators,
+additional filters, stops, multi-asset rules and intraday strategies are rejected by the
+restricted output schema or require clarification. Review is necessary: schema validation
+checks allowed structure, not whether a model perfectly understood your intent. AI name,
+description and explanation are advisory text; only validated structured fields drive signals.
+
+Generation calls the real OpenAI Responses API using structured JSON outputs, with no tools,
+`store=false`, bounded input/output and no automatic retries. Only your strategy prompt is
+sent, without portfolio data or brokerage credentials. Provider data-handling policies still
+apply. Prompts, explanations and accepted specifications are stored locally with each draft;
+do not put secrets in strategy descriptions. Server keys never go to the browser or model.
+No arbitrary code is evaluated, and the model cannot alter simulation capital/cost controls,
+approve versions, activate trading or submit orders.
+
+Without a key, the UI reports setup is required; there is no fake AI or sample-generation
+fallback. Existing drafts and the manual backtester still work. A generated draft is not
+approval, and approval is for historical backtesting only. Phase 2 tests use mocked AI
+responses; authenticated OpenAI calls have not been validated without credentials.
+
+For restricted cloud environments allow `api.openai.com` and use native API processes to
+inherit platform proxy/trust configuration. The Docker build helper configures build-time
+networking only; external calls inside API containers need equivalent runtime proxy/trust.
+
 ## Interactive historical queries with Alpaca
 
 Set `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` securely on the server or in ignored `.env`.
@@ -115,10 +155,10 @@ validation and mobile layout. CI runs these against PostgreSQL; it never submits
   ledger. Benchmark is cost-free buy-and-hold from the first close. See in-app assumptions.
 - Every run persists configuration, data hash, versions, assumptions, fills, curve and metrics.
   Null ratios mean undefined, not zero. No claim of profitability or future performance.
-- No auth, tenant isolation, AI, billing, workers or brokerage execution yet. Do not expose
+- No auth, tenant isolation, billing, workers or brokerage execution yet. Do not expose
   this local application publicly. Live order submission has no implementation or API route.
 
 See [architecture and dataset provenance](docs/ARCHITECTURE.md),
 [development conventions](AGENTS.md), and [roadmap](docs/ROADMAP.md).
-Next milestone: validated, versioned AI-assisted strategy drafts, with explicit approval and
-deterministic validation before any future activation.
+Next milestone: paper-trading interfaces, deterministic risk controls, idempotent order
+intents and reconciliation, before enabling scheduled paper execution.

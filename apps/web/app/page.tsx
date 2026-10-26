@@ -23,6 +23,7 @@ import {
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
+import { AIStrategyBuilder } from "@/components/ai-strategy-builder";
 import { type Config, type Run, request } from "@/lib/api";
 
 const initial: Config = {
@@ -51,12 +52,16 @@ const number = (n: number | null | undefined, suffix = "") =>
 export default function Dashboard() {
   const [config, setConfig] = useState(initial);
   const [run, setRun] = useState<Run | null>(null);
+  const [draftSelected, setDraftSelected] = useState(false);
   const [tab, setTab] = useState<"equity" | "drawdown">("equity");
   const [loadError, setLoadError] = useState("");
   const queryClient = useQueryClient();
   const capabilities = useQuery({
     queryKey: ["capabilities"],
-    queryFn: () => request<{ alpaca_configured: boolean }>("capabilities"),
+    queryFn: () =>
+      request<{ alpaca_configured: boolean; ai_configured: boolean }>(
+        "capabilities",
+      ),
   });
   const history = useQuery({
     queryKey: ["runs"],
@@ -183,6 +188,26 @@ export default function Dashboard() {
             Historical performance does not predict future returns.
           </div>
 
+          <AIStrategyBuilder
+            config={config}
+            aiConfigured={capabilities.data?.ai_configured}
+            onManual={() => setDraftSelected(false)}
+            onReview={(spec) => {
+              setDraftSelected(true);
+              setConfig((c) => ({
+                ...c,
+                symbol: spec.symbol,
+                fast: spec.fast,
+                slow: spec.slow,
+                provider: spec.symbol === "AAPL" ? c.provider : "alpaca",
+              }));
+            }}
+            onResult={(result) => {
+              setRun(result);
+              setLoadError("");
+            }}
+          />
+
           <section
             className="panel mb-6 p-5 md:p-6"
             aria-labelledby="strategy-heading"
@@ -202,7 +227,7 @@ export default function Dashboard() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                backtest.mutate(config);
+                if (!draftSelected) backtest.mutate(config);
               }}
             >
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
@@ -212,6 +237,10 @@ export default function Dashboard() {
                     value={config.provider}
                     onChange={(e) => {
                       const provider = e.target.value as Config["provider"];
+                      if (draftSelected) {
+                        setConfig((c) => ({ ...c, provider }));
+                        return;
+                      }
                       setConfig(
                         provider === "sample"
                           ? initial
@@ -233,7 +262,7 @@ export default function Dashboard() {
                   Symbol
                   <input
                     value={config.symbol}
-                    readOnly={config.provider === "sample"}
+                    readOnly={draftSelected || config.provider === "sample"}
                     pattern="[A-Z][A-Z0-9.\-]{0,9}"
                     required
                     onChange={(e) =>
@@ -279,6 +308,7 @@ export default function Dashboard() {
                     min="1"
                     max="250"
                     required
+                    disabled={draftSelected}
                     value={config.fast}
                     onChange={(e) => update("fast", Number(e.target.value))}
                   />
@@ -290,6 +320,7 @@ export default function Dashboard() {
                     min="2"
                     max="500"
                     required
+                    disabled={draftSelected}
                     value={config.slow}
                     onChange={(e) => update("slow", Number(e.target.value))}
                   />
@@ -339,7 +370,9 @@ export default function Dashboard() {
                   <Button
                     type="submit"
                     className="w-full"
-                    disabled={backtest.isPending || loadRun.isPending}
+                    disabled={
+                      draftSelected || backtest.isPending || loadRun.isPending
+                    }
                   >
                     {backtest.isPending ? (
                       <LoaderCircle size={16} className="animate-spin" />
@@ -350,6 +383,13 @@ export default function Dashboard() {
                   </Button>
                 </div>
               </div>
+              {draftSelected && (
+                <p className="mt-4 text-xs text-emerald-200">
+                  A strategy version is selected. Use the review panel above to
+                  approve and backtest it, or choose Return to manual
+                  backtesting.
+                </p>
+              )}
               <p className="mt-4 text-xs leading-5 text-slate-500">
                 {config.provider === "sample"
                   ? "Bundled historical sample: AAPL, February 17, 2015 – February 16, 2017. Adjusted prices; no API keys required."

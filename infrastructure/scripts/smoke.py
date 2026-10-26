@@ -22,4 +22,31 @@ with httpx.Client(base_url=base, timeout=30) as client:
     invalid = client.post("/api/backtests", json={"fast": 50, "slow": 20})
     assert invalid.status_code == 422
     assert client.post("/api/orders", json={}).status_code == 404
-print("PASS: health, 506-bar simulation, 5 completed trades, persistence, validation, no orders")
+    spec = {
+        "name": "Manual smoke-test version",
+        "description": "Daily AAPL SMA 20/50 crossover.",
+        "symbol": "AAPL",
+        "timeframe": "1Day",
+        "indicator": "SMA",
+        "fast": 20,
+        "slow": 50,
+        "entry": "fast_crosses_above_slow",
+        "exit": "fast_crosses_below_slow",
+        "direction": "long_only",
+    }
+    saved = client.post("/api/strategy-drafts", json={"specification": spec})
+    assert saved.status_code == 201, saved.text
+    draft = saved.json()
+    path = f"/api/strategy-drafts/{draft['id']}"
+    assert client.post(f"{path}/backtests", json={}).status_code == 409
+    approved = client.post(f"{path}/approve", json={})
+    approved.raise_for_status()
+    assert approved.json()["approved_at"]
+    run = client.post(f"{path}/backtests", json={})
+    assert run.status_code == 201, run.text
+    assert run.json()["strategy_draft"]["specification"] == spec
+    assert run.json()["strategy_draft"]["id"] == draft["id"]
+print(
+    "PASS: historical simulation, PostgreSQL persistence, draft approval gate, versioned backtest, "
+    "validation, no orders. AI generation is covered separately by mocked tests."
+)

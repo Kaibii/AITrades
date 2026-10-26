@@ -15,6 +15,12 @@ export type Run = {
   created_at: string;
   engine_version: string;
   strategy_version: string;
+  strategy_draft?: {
+    id: string;
+    approved_at: string;
+    origin: string;
+    specification: StrategySpec;
+  };
   configuration: Config;
   assumptions: string[];
   data: {
@@ -43,6 +49,29 @@ export type Run = {
     return_pct: number;
     holding_bars: number;
   }[];
+};
+
+export type StrategySpec = {
+  name: string;
+  description: string;
+  symbol: string;
+  timeframe: "1Day";
+  indicator: "SMA";
+  fast: number;
+  slow: number;
+  entry: "fast_crosses_above_slow";
+  exit: "fast_crosses_below_slow";
+  direction: "long_only";
+};
+export type StrategyDraft = {
+  id: string;
+  parent_id: string | null;
+  created_at: string;
+  approved_at: string | null;
+  origin: "ai" | "manual";
+  prompt: string | null;
+  explanation: string;
+  specification: StrategySpec;
 };
 export async function request<T>(path: string, body?: unknown): Promise<T> {
   const response = await fetch(
