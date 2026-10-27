@@ -19,7 +19,7 @@ for name in ("HTTP_PROXY", "HTTPS_PROXY"):
     if hostname:
         hosts[hostname] = socket.gethostbyname(hostname)
 build = {"extra_hosts": hosts}
-config = {"services": {"api": {"build": build}, "web": {"build": build}}}
+config = {"services": {"api": {"build": build}, "web": {"build": build}, "worker": {"build": build}}}
 certificate = os.environ.get("SSL_CERT_FILE")
 if certificate and Path(certificate).is_file():
     build["secrets"] = ["environment_ca"]

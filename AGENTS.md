@@ -10,6 +10,9 @@ checkout: cloud tasks are already isolated. Do not create worktrees unless reque
 - Database: `docker compose up -d db`; migrate: `.venv/bin/alembic upgrade head`
 - API: `.venv/bin/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`
 - Web: `cd apps/web && npm run dev`
+- Historical replay worker: `.venv/bin/python -m app.paper_worker` (5-second ticks).
+  `--once` processes one tick and exits. Native development: stop only this project's
+  `api web worker` containers before starting native processes. PostgreSQL stays running.
 - Backend tests/lint: `.venv/bin/pytest -q`; `.venv/bin/ruff check .`; `.venv/bin/ruff format --check .`
 - Web checks: `cd apps/web && npm run lint && npm run typecheck && npm run build`
 - HTTP/PostgreSQL smoke (running API): `.venv/bin/python infrastructure/scripts/smoke.py`
@@ -25,7 +28,13 @@ checkout: cloud tasks are already isolated. Do not create worktrees unless reque
   TanStack Query. Browser calls same-origin Next.js API proxy; secrets remain server-side.
 - The current app is **local, single-user research**. No auth or tenant isolation yet. Bind locally;
   do not deploy publicly until those controls are implemented. No customer brokerage accounts.
-- No order submission, live trading, arbitrary Python evaluation, or AI execution paths.
+- No network brokerage order routes, live trading, arbitrary Python evaluation, or AI execution.
+  Paper accounts are historical replay only. `app.paper_worker` must never instantiate
+  a network broker; it coordinates through PostgreSQL row locks and persisted cursors.
+  `execution.alpaca` is a default-disabled adapter foundation tested with HTTP mocks only.
+  Do not wire it into jobs/routes until journal-before-submit, uncertain-outcome recovery,
+  account authorization, current-data checks and explicit paper activation are implemented.
+  Keep replay clearly labeled; no claims of current quotes or Alpaca paper fills.
   AI only drafts the restricted schema in `quantpilot.ai`; explicit approval is per immutable
   version, required server-side for draft backtesting. Edits create new unapproved versions.
   Do not add a fake AI fallback or send market/account/credential data to the model.

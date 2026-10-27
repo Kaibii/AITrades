@@ -1,6 +1,9 @@
 """Functional smoke test against a running API and migrated PostgreSQL database."""
 
 import os
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 
@@ -46,7 +49,44 @@ with httpx.Client(base_url=base, timeout=30) as client:
     assert run.status_code == 201, run.text
     assert run.json()["strategy_draft"]["specification"] == spec
     assert run.json()["strategy_draft"]["id"] == draft["id"]
+    replay = client.post(
+        "/api/paper/sessions",
+        json={
+            "backtest_id": run.json()["id"],
+            "limits": {"max_daily_loss_pct": 90, "max_drawdown_pct": 90},
+        },
+    )
+    assert replay.status_code == 201, replay.text
+    paper_path = f"/api/paper/sessions/{replay.json()['id']}"
+    for cursor in (0, 100):
+
+        def duplicate_advance(_, expected=cursor):
+            return client.post(
+                f"{paper_path}/advance", json={"expected_cursor": expected, "bars": 100}
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            responses = list(pool.map(duplicate_advance, range(2)))
+        assert all(r.status_code == 200 for r in responses), [r.text for r in responses]
+        assert all(r.json()["cursor"] == cursor + 100 for r in responses)
+        assert responses[0].json()["orders"] == responses[1].json()["orders"]
+    advanced = client.get(paper_path).json()
+    assert len(advanced["orders"]) == 1 and float(advanced["quantity"]) > 0
+    client.post(f"{paper_path}/start", json={}).raise_for_status()
+    subprocess.run([sys.executable, "-m", "app.paper_worker", "--once"], check=True)
+    paused = client.post(f"{paper_path}/pause", json={}).json()
+    assert paused["cursor"] > 200
+    stopped = client.post(f"{paper_path}/stop", json={}).json()
+    assert stopped["status"] == "stopped" and stopped["quantity"] == paused["quantity"]
+    assert stopped["orders"] == paused["orders"]
+    assert (
+        client.post(
+            f"{paper_path}/advance", json={"expected_cursor": stopped["cursor"]}
+        ).status_code
+        == 409
+    )
 print(
     "PASS: historical simulation, PostgreSQL persistence, draft approval gate, versioned backtest, "
-    "validation, no orders. AI generation is covered separately by mocked tests."
+    "concurrent replay idempotency, worker restart, emergency stop. No brokerage orders. "
+    "AI generation is covered separately by mocked tests."
 )

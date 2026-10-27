@@ -99,6 +99,46 @@ For restricted cloud environments allow `api.openai.com` and use native API proc
 inherit platform proxy/trust configuration. The Docker build helper configures build-time
 networking only; external calls inside API containers need equivalent runtime proxy/trust.
 
+## Historical paper portfolio replay
+
+After backtesting an explicitly approved strategy version, open **Paper portfolio replay**.
+Set limits for a new virtual account and click **Create virtual replay account**. Each account
+starts paused with the source backtest's exact historical bars, initial cash, fees and slippage.
+Approval is still for research: this creates no brokerage connection or external order.
+
+- **Advance 100 bars** processes a bounded batch manually. Warm-up and crossover signals
+  determine when orders appear. This works without a background worker.
+- **Start automatic replay** arms the account. The replay worker advances one historical bar
+  every five seconds. **Pause replay** freezes the historical clock.
+- **Emergency stop** permanently blocks further bars/orders after any current atomic tick/batch
+  finishes. Already-filled orders and positions remain; there is no liquidation. Replay fills
+  are immediate, so there are no pending external orders to cancel.
+- Suspensions/completion preserve holdings too. Create a new account to change immutable limits
+  or restart a stopped/suspended replay. Saved accounts show cash, shares, equity, fills and events.
+
+Docker Compose starts the replay worker automatically. For native development, run a third terminal:
+
+```bash
+.venv/bin/python -m app.paper_worker
+```
+
+Use `--once` to process one tick and exit; `--interval 1` changes the replay interval for local
+testing. The worker resumes persisted running accounts after restart. Stop this project's
+`api web worker` containers when switching to native services. Worker heartbeat reports recent
+activity; absent workers leave accounts armed without advancing them.
+
+Allocation, maximum position/notional, buying power and one-order-per-bar checks run before
+fills. Daily-loss and drawdown limits check modeled opening and closing equity; breaches
+suspend further processing without automatically selling. Exit orders also obey the notional
+cap and can be rejected. Risk limits are not intrabar guarantees. All balances use Decimal
+accounting stored at 18 decimal places. Replay allocation can differ from the original
+backtest, so performance can differ. Saved adjusted-price assumptions still apply.
+
+This feature replays **historical** bars; it does not use current quotes or submit Alpaca paper
+orders. An isolated, default-disabled Alpaca paper adapter is present as a tested foundation.
+It is not wired into the application. Full paper brokerage execution requires the remaining
+authorization, submission-journal and reconciliation work in the roadmap. There is no live adapter.
+
 ## Interactive historical queries with Alpaca
 
 Set `APCA_API_KEY_ID` and `APCA_API_SECRET_KEY` securely on the server or in ignored `.env`.
@@ -155,10 +195,10 @@ validation and mobile layout. CI runs these against PostgreSQL; it never submits
   ledger. Benchmark is cost-free buy-and-hold from the first close. See in-app assumptions.
 - Every run persists configuration, data hash, versions, assumptions, fills, curve and metrics.
   Null ratios mean undefined, not zero. No claim of profitability or future performance.
-- No auth, tenant isolation, billing, workers or brokerage execution yet. Do not expose
+- No auth, tenant isolation, billing or external brokerage execution yet. Do not expose
   this local application publicly. Live order submission has no implementation or API route.
 
 See [architecture and dataset provenance](docs/ARCHITECTURE.md),
 [development conventions](AGENTS.md), and [roadmap](docs/ROADMAP.md).
-Next milestone: paper-trading interfaces, deterministic risk controls, idempotent order
-intents and reconciliation, before enabling scheduled paper execution.
+Next milestone: dedicated Alpaca paper-account authorization, durable external-order intents,
+current-data checks and restart reconciliation before enabling scheduled paper brokerage execution.

@@ -18,7 +18,16 @@ test("configure, run, inspect, export, and reload a persisted historical backtes
   await expect(
     page.getByRole("heading", { name: "AAPL · Research results" }),
   ).toBeVisible();
-  await expect(page.getByRole("table")).toBeVisible();
+  await expect(
+    page
+      .getByRole("table")
+      .filter({
+        has: page.getByRole("columnheader", {
+          name: "Entry date",
+          exact: true,
+        }),
+      }),
+  ).toBeVisible();
   expect(await page.locator("tbody tr").count()).toBeGreaterThan(0);
   await expect(
     page.getByRole("img", {
@@ -55,7 +64,9 @@ test("invalid periods show an error without creating performance", async ({
   await page.getByLabel("Fast SMA (bars)").fill("50");
   await page.getByLabel("Slow SMA (bars)").fill("20");
   await page.getByRole("button", { name: "Run backtest" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "Invalid configuration" })).toContainText("Invalid configuration");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Invalid configuration" }),
+  ).toContainText("Invalid configuration");
   await expect(page.getByText("Your research starts here")).toBeVisible();
 });
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const allowed =
-  /^(capabilities|backtests(?:\/[0-9a-f-]{36})?|strategy-drafts(?:\/generate|\/[0-9a-f-]{36}(?:\/(?:approve|backtests))?)?)$/;
+  /^(capabilities|backtests(?:\/[0-9a-f-]{36})?|paper\/(?:status|sessions(?:\/[0-9a-f-]{36}(?:\/(?:advance|start|pause|stop))?)?)|strategy-drafts(?:\/generate|\/[0-9a-f-]{36}(?:\/(?:approve|backtests))?)?)$/;
 async function proxy(
   request: NextRequest,
   context: { params: Promise<{ path: string[] }> },

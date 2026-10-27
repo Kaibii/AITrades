@@ -30,6 +30,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-quantpilot}:${POSTGRES_PASSWORD:-quantpilot}@db:5432/${POSTGRES_DB:-quantpilot}
+    command: ["/app/.venv/bin/python", "-m", "app.paper_worker"]
+    restart: unless-stopped
+    depends_on:
+      api: {condition: service_healthy}
   web:
     build:
       context: .

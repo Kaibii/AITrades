@@ -88,3 +88,45 @@ data-handling policies still apply. Prompts/explanations are stored in the local
 Tests mock the AI boundary, including the actual SDK HTTP request/structured-output parser.
 Browser tests stub generation only, while using the actual API/PostgreSQL approval and
 backtest routes. An authenticated OpenAI call remains a separate credential-dependent check.
+
+## Historical replay portfolios
+
+Migration 0003 adds virtual accounts, simulated order/fill journals, risk events and worker
+heartbeats. Accounts can only be seeded from a backtest of an explicitly approved strategy
+version. The specification and normalized OHLCV hash are revalidated before copying the exact
+source records. Each account freezes risk limits, source hash, commission and slippage.
+Balances/quantities use Decimal and PostgreSQL Numeric(38,18); quantities round down to six
+decimal places. JSON history is a display/export snapshot, not the accounting authority.
+
+One tick evaluates the preceding completed close, validates modeled opening portfolio risk,
+creates an idempotent intent, checks order risk, fills at the next adjusted open with costs,
+and marks closing equity. The same crossover function is used by the backtester. Allocation
+is intentionally independent of the backtest's allocation. Portfolio loss/drawdown checks
+cover opens/closes, not intraday extremes. Position/notional caps apply pre-trade; market
+movement can change later exposure. No margin, shorting, separate dividend ledger or liquidity
+model exists. Exit orders respect notional caps and may be rejected, leaving a holding.
+
+An exclusive PostgreSQL account-row lock serializes cursor, cash, positions and journal writes.
+Unique signal/client IDs provide a second duplicate-order guard. A retry with an already
+processed expected cursor is a no-op. A crash rolls back the entire local tick/batch; no network
+broker side effects exist. Manual batches are bounded to 100 bars. Stop/pause requests serialize
+after the current atomic tick/batch. Completed/stopped/suspended accounts cannot resume; they
+retain positions without liquidation. Paused accounts may resume or advance manually.
+
+The separate worker polls running accounts, using SKIP LOCKED to coordinate competing workers,
+and rechecks status after acquiring the lock. It resumes durable cursors after restart and
+suspends a session after unexpected processing errors. Heartbeats report observed activity.
+The local worker processes at most 100 sessions per polling pass; this is not a production
+queue or a multi-tenant service. PostgreSQL already supplies coordination here, so Redis is
+deferred instead of adding an idle infrastructure dependency. The Docker worker receives
+only database configuration, not AI/brokerage credential bindings.
+
+`execution.PaperBroker` separates intents and order updates from strategy logic. Replay uses
+the local adapter. The isolated Alpaca adapter has a fixed paper-only HTTPS destination and
+defaults submission/cancellation off. It uses one POST, stable client IDs, lookup reconciliation,
+and explicit uncertain outcomes for timeouts/5xx/malformed successful responses. It has no
+application route or worker integration. Mocked tests exercise partial/terminal states and
+refuse cumulative-fill regressions. Persisted external submission attempts, partial-fill
+accounting, account authorization, current-session calendars/freshness, cancellation monitoring,
+and restart reconciliation are still prerequisites for external Alpaca execution. Neither
+replay account creation nor phase-2 approval authorizes a broker order.

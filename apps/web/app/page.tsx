@@ -24,6 +24,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { AIStrategyBuilder } from "@/components/ai-strategy-builder";
+import { PaperReplay } from "@/components/paper-replay";
 import { type Config, type Run, request } from "@/lib/api";
 
 const initial: Config = {
@@ -407,6 +408,8 @@ export default function Dashboard() {
               </p>
             )}
           </section>
+
+          <PaperReplay run={run} />
 
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">

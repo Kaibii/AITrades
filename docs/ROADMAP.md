@@ -32,11 +32,25 @@ Approval authorizes historical backtesting only. AI has no brokerage/account acc
 approve its output, alter risk settings or submit orders. The server requires a real provider
 key; it never substitutes a fake AI result. This milestone remains local and single-user.
 
-## Phase 3 — Paper trading
+## Phase 3 — Paper trading (historical replay slice implemented)
 
-Alpaca-authorized paper adapter, order intents/state machines, idempotency, partial fills,
-timeouts/reconciliation, scheduled workers/Redis, risk limits and emergency suspension.
-Specify cancel/prevent-new-order behavior; connectivity loss must never trigger liquidation.
+- [x] Virtual single-symbol accounts seeded from an approved-version backtest's exact OHLCV records
+- [x] Durable Decimal balances, positions, simulated orders/fills, risk events and equity history
+- [x] Deterministic allocation, exposure, notional, buying-power, daily-loss and drawdown controls
+- [x] PostgreSQL-coordinated replay worker, heartbeat, pause/start, manual advance and restart recovery
+- [x] Idempotent requests, unique signal/order IDs, transaction rollback and real PostgreSQL concurrency checks
+- [x] Emergency stop blocks new processing and retains holdings; never liquidates on disconnect
+- [x] Default-disabled Alpaca paper adapter foundation and mocked partial-fill/state/timeout tests
+- [x] Dashboard account controls, equity curve, fill journal, risk reporting and browser tests
+- [ ] Dedicated Alpaca paper-account authorization and explicit activation flow
+- [ ] Current-market calendar/data freshness checks and scheduling for actual paper sessions
+- [ ] Durable external submission attempts, partial-fill accounting and broker reconciliation after restarts
+- [ ] Cancellation acknowledgments, execution monitoring and operational recovery procedures
+
+Historical replay is fully offline after loading its source records. It is not an Alpaca
+paper account or a current-market simulation. No application route or worker submits external
+orders. PostgreSQL locks coordinate this single-host milestone; Redis/queue infrastructure
+is deferred until external execution and workload justify it. Full Phase 3 is not complete.
 
 ## Phase 4 — SaaS foundation
 

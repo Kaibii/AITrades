@@ -12,6 +12,7 @@ from app.backtests import execute_backtest
 from app.config import settings
 from app.database import BacktestRun, get_session
 from app.logging import configure_logging
+from app.paper_routes import router as paper_router
 from app.strategy_routes import router as strategy_router
 
 configure_logging()
@@ -19,6 +20,7 @@ logger = logging.getLogger("quantpilot")
 app = FastAPI(title="QuantPilot Research API", version="0.1.0")
 SessionDep = Annotated[Session, Depends(get_session)]
 app.include_router(strategy_router)
+app.include_router(paper_router)
 
 
 @app.exception_handler(SQLAlchemyError)
